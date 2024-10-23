@@ -53,8 +53,8 @@
             this.options = {
                 theme: options.theme || config.defaultTheme,
                 stream: options.stream || config.defaultStream,
-                width: options.width || '300px',
-                height: options.height || '400px'
+                width: options.width || '99%',
+                height: options.height || '63%'
             };
             
             this.isPlaying = false;
@@ -122,8 +122,8 @@
                     gap: 20px;
                 }
                 .mm-player-button {
-                    width: 60px;
-                    height: 60px;
+                    width: 90px;
+                    height: 90px;
                     border-radius: 50%;
                     border: none;
                     background: ${this.options.theme === 'dark' ? '#333' : '#eee'};
@@ -137,8 +137,8 @@
                     background: ${this.options.theme === 'dark' ? '#444' : '#ddd'};
                 }
                 .mm-player-button svg {
-                    width: 30px;
-                    height: 30px;
+                    width: 45px;
+                    height: 45px;
                     fill: ${this.options.theme === 'dark' ? '#fff' : '#000'};
                 }
                 .mm-volume-control {
@@ -153,7 +153,7 @@
                     fill: ${this.options.theme === 'dark' ? '#fff' : '#000'};
                 }
                 .mm-volume-slider {
-                    flex-grow: 1;
+                    // flex-grow: 1;
                     height: 4px;
                     -webkit-appearance: none;
                     background: ${this.options.theme === 'dark' ? '#444' : '#ddd'};
