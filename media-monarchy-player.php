@@ -23,8 +23,8 @@ function media_monarchy_player_shortcode($atts) {
     $atts = shortcode_atts(array(
         'stream' => 'music',
         'theme' => 'dark',
-        'width' => '300px',
-        'height' => '300px'
+        'width' => '99%',
+        'height' => '63%'
     ), $atts);
     
     $id = 'mm-player-' . uniqid();
