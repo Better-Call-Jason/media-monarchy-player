@@ -6,8 +6,9 @@
         defaultTheme: 'dark',
         defaultStream: 'music',
         defaultVolume: 0.5,
-        retryAttempts: 5,
-        retryDelay: 3000,
+        retryAttempts: 20, // Increased retry attempts for stream switching
+        retryDelay: 15000, // 15 seconds between retries
+        streamSwitchBuffer: 300000, // 5 minutes buffer for stream switching
         metadataRefreshInterval: 60000 // 1 minute
     };
 
@@ -15,7 +16,34 @@
     const streams = {
         onair: {
             title: 'Media Monarchy Live Broadcast',
-            stream: '/onair_stream'
+            getStreamUrl: () => {
+                const now = new Date();
+                const day = now.getDay(); // 0 = Sunday, 6 = Saturday
+                const hour = now.getHours();
+                const minute = now.getMinutes();
+                
+                // Convert to Mountain Time
+                const mstOffset = 7; // MST is UTC-7
+                const mstHour = (hour + 24 - mstOffset) % 24;
+                
+                // Check if it's weekend (Friday 5PM to Monday 9AM MST)
+                if (day === 5 && mstHour >= 17) {
+                    return '/ah_onair_stream';
+                } else if (day === 6) {
+                    return '/ah_onair_stream';
+                } else if (day === 0) {
+                    return '/ah_onair_stream';
+                } else if (day === 1 && mstHour < 9) {
+                    return '/ah_onair_stream';
+                }
+                
+                // Weekday schedule (9AM-5PM MST = regular stream, 5PM-9AM = after hours)
+                if (mstHour >= 9 && mstHour < 17) {
+                    return '/onair_stream';
+                } else {
+                    return '/ah_onair_stream';
+                }
+            }
         },
         music: {
             title: 'PUTV All Genres Radio',
@@ -63,6 +91,9 @@
             this.retryCount = 0;
             this.metadataInterval = null;
             this.volume = config.defaultVolume;
+            this.streamCheckInterval = null;
+            this.lastStreamUrl = null;
+            this.streamSwitchStartTime = null;
             this.init();
         }
 
@@ -214,6 +245,7 @@
 
                 .mm-player-button.mm-loading .mm-loading-spinner {
                     display: block;
+                    
                 }
                     
             `;
@@ -250,7 +282,9 @@
                     <div class="mm-episode-link"></div>
                 </div>
             `;
-
+            
+            this.startStreamChecking();
+            
             // Load required scripts
             this.loadScript(`${config.baseUrl}/js/howler.js`, () => {
                 this.initializePlayer();
@@ -275,9 +309,75 @@
             document.head.appendChild(script);
         }
 
-        initializePlayer() {
-            const streamUrl = `${config.baseUrl}${streams[this.options.stream].stream}`;
+                startStreamChecking() {
+            // Check every minute for stream changes
+            this.streamCheckInterval = setInterval(() => {
+                if (this.options.stream === 'onair') {
+                    this.checkAndUpdateStream();
+                }
+            }, 60000);
+        }
 
+        checkAndUpdateStream() {
+            const currentStreamUrl = streams[this.options.stream].getStreamUrl();
+            
+            if (this.lastStreamUrl !== currentStreamUrl) {
+                console.log('Stream change detected');
+                this.lastStreamUrl = currentStreamUrl;
+                this.streamSwitchStartTime = Date.now();
+                
+                if (this.isPlaying) {
+                    this.retryCount = 0;
+                    this.switchStream(currentStreamUrl);
+                }
+            }
+        }
+
+        switchStream(newStreamUrl) {
+            this.isLoading = true;
+            const button = this.container.querySelector('.mm-player-button');
+            button.classList.add('mm-loading');
+
+            // Create new Howl instance with new stream
+            const newSound = new Howl({
+                src: [`${config.baseUrl}${newStreamUrl}`],
+                html5: true,
+                volume: this.volume,
+                format: ['mp3'],
+                onplay: () => {
+                    if (this.sound) {
+                        this.sound.unload();
+                    }
+                    this.sound = newSound;
+                    this.updatePlayerState(true);
+                },
+                onloaderror: () => this.handleStreamSwitchError(),
+                onplayerror: () => this.handleStreamSwitchError()
+            });
+
+            newSound.play();
+        }
+
+        handleStreamSwitchError() {
+            const timeSinceSwitch = Date.now() - this.streamSwitchStartTime;
+            
+            if (timeSinceSwitch < config.streamSwitchBuffer && this.retryCount < config.retryAttempts) {
+                this.retryCount++;
+                console.log(`Stream switch retry ${this.retryCount}/${config.retryAttempts}`);
+                
+                setTimeout(() => {
+                    const currentStreamUrl = streams[this.options.stream].getStreamUrl();
+                    this.switchStream(currentStreamUrl);
+                }, config.retryDelay);
+            } else {
+                this.handleStreamEnd('Stream switch failed');
+            }
+        }
+
+        initializePlayer() {
+            const streamUrl = `${config.baseUrl}${streams[this.options.stream].getStreamUrl()}`;
+            this.lastStreamUrl = streams[this.options.stream].getStreamUrl();
+ 
             // Set initial title for onair stream
             if (this.options.stream === 'onair') {
                 const nowPlaying = this.container.querySelector('.mm-now-playing');
@@ -467,6 +567,9 @@
         destroy() {
             if (this.metadataInterval) {
                 clearInterval(this.metadataInterval);
+            }
+            if (this.streamCheckInterval) {
+                clearInterval(this.streamCheckInterval);
             }
             if (this.sound) {
                 this.sound.unload();
