@@ -6,10 +6,15 @@
         defaultTheme: 'dark',
         defaultStream: 'music',
         defaultVolume: 0.5,
-        retryAttempts: 20, // Increased retry attempts for stream switching
-        retryDelay: 15000, // 15 seconds between retries
-        streamSwitchBuffer: 300000, // 5 minutes buffer for stream switching
-        metadataRefreshInterval: 60000 // 1 minute
+        retryAttempts: 20,
+        retryDelay: 15000,
+        streamSwitchBuffer: 300000,
+        metadataRefreshInterval: 60000,
+        // Define MST schedule in UTC
+        scheduleUTC: {
+            startHour: 16, // 9AM MST = 16:00 UTC
+            endHour: 0,    // 5PM MST = 00:00 UTC next day
+        }
     };
 
     // Stream types and their metadata
@@ -18,31 +23,29 @@
             title: 'Media Monarchy Live Broadcast',
             getStreamUrl: () => {
                 const now = new Date();
-                const day = now.getDay(); // 0 = Sunday, 6 = Saturday
-                const hour = now.getHours();
-                const minute = now.getMinutes();
+                const utcHour = now.getUTCHours();
+                const utcDay = now.getUTCDay(); // 0 = Sunday, 6 = Saturday
                 
-                // Convert to Mountain Time
-                const mstOffset = 7; // MST is UTC-7
-                const mstHour = (hour + 24 - mstOffset) % 24;
-                
-                // Check if it's weekend (Friday 5PM to Monday 9AM MST)
-                if (day === 5 && mstHour >= 17) {
-                    return '/ah_onair_stream';
-                } else if (day === 6) {
-                    return '/ah_onair_stream';
-                } else if (day === 0) {
-                    return '/ah_onair_stream';
-                } else if (day === 1 && mstHour < 9) {
+                // Helper function to check if current time is within regular broadcast hours
+                const isRegularBroadcastTime = () => {
+                    // If start hour is greater than end hour, we need to check across midnight
+                    if (config.scheduleUTC.startHour > config.scheduleUTC.endHour) {
+                        return utcHour >= config.scheduleUTC.startHour || utcHour < config.scheduleUTC.endHour;
+                    }
+                    // Otherwise, check if hour is between start and end
+                    return utcHour >= config.scheduleUTC.startHour && utcHour < config.scheduleUTC.endHour;
+                };
+
+                // Weekend check (Friday 00:00 UTC to Monday 16:00 UTC)
+                // Friday 5PM MST = Saturday 00:00 UTC
+                if (utcDay === 6 || utcDay === 0 || // All of Saturday and Sunday
+                    (utcDay === 5 && utcHour >= 0) || // Friday after 5PM MST
+                    (utcDay === 1 && utcHour < 16)) { // Monday before 9AM MST
                     return '/ah_onair_stream';
                 }
-                
-                // Weekday schedule (9AM-5PM MST = regular stream, 5PM-9AM = after hours)
-                if (mstHour >= 9 && mstHour < 17) {
-                    return '/onair_stream';
-                } else {
-                    return '/ah_onair_stream';
-                }
+
+                // Weekday schedule
+                return isRegularBroadcastTime() ? '/onair_stream' : '/ah_onair_stream';
             }
         },
         music: {
@@ -375,15 +378,24 @@
         }
 
         initializePlayer() {
-            const streamUrl = `${config.baseUrl}${streams[this.options.stream].getStreamUrl()}`;
-            this.lastStreamUrl = streams[this.options.stream].getStreamUrl();
- 
+            // For 'onair' stream, use getStreamUrl(), for others use static stream property
+            const streamUrl = `${config.baseUrl}${
+                this.options.stream === 'onair' 
+                    ? streams[this.options.stream].getStreamUrl()
+                    : streams[this.options.stream].stream
+            }`;
+            
+            // Only set lastStreamUrl for 'onair' stream
+            if (this.options.stream === 'onair') {
+                this.lastStreamUrl = streams[this.options.stream].getStreamUrl();
+            }
+
             // Set initial title for onair stream
             if (this.options.stream === 'onair') {
                 const nowPlaying = this.container.querySelector('.mm-now-playing');
                 nowPlaying.textContent = 'Live Broadcast';
             }
-    
+
             this.sound = new Howl({
                 src: [streamUrl],
                 html5: true,
