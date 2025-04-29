@@ -21,7 +21,7 @@
     const streams = {
         onair: {
             title: 'Media Monarchy Live Broadcast',
-            stream: /onair_stream
+            stream: '/onair_stream'
         },
         music: {
             title: 'PUTV All Genres Radio',
