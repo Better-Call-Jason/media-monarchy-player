@@ -21,32 +21,7 @@
     const streams = {
         onair: {
             title: 'Media Monarchy Live Broadcast',
-            getStreamUrl: () => {
-                const now = new Date();
-                const utcHour = now.getUTCHours();
-                const utcDay = now.getUTCDay(); // 0 = Sunday, 6 = Saturday
-                
-                // Helper function to check if current time is within regular broadcast hours
-                const isRegularBroadcastTime = () => {
-                    // If start hour is greater than end hour, we need to check across midnight
-                    if (config.scheduleUTC.startHour > config.scheduleUTC.endHour) {
-                        return utcHour >= config.scheduleUTC.startHour || utcHour < config.scheduleUTC.endHour;
-                    }
-                    // Otherwise, check if hour is between start and end
-                    return utcHour >= config.scheduleUTC.startHour && utcHour < config.scheduleUTC.endHour;
-                };
-
-                // Weekend check (Friday 00:00 UTC to Monday 16:00 UTC)
-                // Friday 5PM MST = Saturday 00:00 UTC
-                if (utcDay === 6 || utcDay === 0 || // All of Saturday and Sunday
-                    (utcDay === 5 && utcHour >= 0) || // Friday after 5PM MST
-                    (utcDay === 1 && utcHour < 16)) { // Monday before 9AM MST
-                    return '/ah_onair_stream';
-                }
-
-                // Weekday schedule
-                return isRegularBroadcastTime() ? '/onair_stream' : '/ah_onair_stream';
-            }
+            stream: /onair_stream
         },
         music: {
             title: 'PUTV All Genres Radio',
