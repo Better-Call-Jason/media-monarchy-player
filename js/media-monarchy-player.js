@@ -84,7 +84,7 @@
             this.options = {
                 theme: options.theme || config.defaultTheme,
                 stream: options.stream || config.defaultStream,
-                width: options.width || '99%',
+                width: options.width || '100%',
                 height: options.height || '63%'
             };
             
