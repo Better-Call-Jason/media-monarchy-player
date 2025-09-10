@@ -93,7 +93,7 @@
             this.sound = null;
             this.retryCount = 0;
             this.metadataInterval = null;
-            this.volume = config.defaultVolume;
+            this.volume = options.volume !== undefined ? options.volume : config.defaultVolume; 
             this.streamCheckInterval = null;
             this.lastStreamUrl = null;
             this.streamSwitchStartTime = null;
