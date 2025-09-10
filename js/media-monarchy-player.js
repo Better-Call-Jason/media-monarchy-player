@@ -378,6 +378,11 @@
         }
 
         initializePlayer() {
+
+            //preventing autoplay
+            this.isPlaying = false;
+            this.isLoading = false;
+            
             // For 'onair' stream, use getStreamUrl(), for others use static stream property
             const streamUrl = `${config.baseUrl}${
                 this.options.stream === 'onair' 
@@ -401,6 +406,7 @@
                 html5: true,
                 volume: this.volume,
                 format: ['mp3'],
+                autoplay: false, 
                 onplay: () => this.updatePlayerState(true),
                 onpause: () => this.updatePlayerState(false),
                 onstop: () => {
@@ -422,6 +428,7 @@
 
         togglePlay() {
             if (this.isLoading) return;
+            this.userInitiated = true; 
             const button = this.container.querySelector('.mm-player-button');
 
             if (this.isPlaying) {
@@ -457,7 +464,7 @@
         handleStreamEnd(reason) {
             console.log(`Stream interrupted: ${reason}`);
             
-            if (this.retryCount < config.retryAttempts) {
+            if (this.retryCount < config.retryAttempts && this.userInitiated) {
                 this.retryCount++;
                 this.isLoading = true;
                 const button = this.container.querySelector('.mm-player-button');
